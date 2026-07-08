@@ -410,6 +410,12 @@ Actions are two lists of individual actions separated by commas. The two lists a
 * `lockCursorToScreen(mode)`
 : Locks the cursor to or unlocks the cursor from the active computer. ''mode'' can be ''off'' to unlock the cursor, ''on'' to lock the cursor, or ''toggle'' to toggle the current state. The default is ''toggle''. If the configuration has no ''lockCursorToScreen'' action and ''Scroll Lock'' is not used as a hot key then ''Scroll Lock'' toggles cursor locking.
 
+* `keyboardBroadcast(mode[,computers])`
+: Turns keyboard broadcasting off or on, or toggles the current state. While enabled, key presses and releases are sent to all computers (or only the computers listed in ''computers'') simultaneously instead of only the active computer. ''mode'' can be ''off'', ''on'', or ''toggle''. The default is ''toggle''. ''computers'' has the same form as in the ''keystroke'' action.
+
+* `mouseBroadcast(mode[,computers])`
+: Turns mouse broadcasting off or on, or toggles the current state. While enabled, mouse button presses and releases, wheel scrolling, and relative mouse motion are sent to all computers (or only the computers listed in ''computers'') simultaneously instead of only the active computer. ''mode'' can be ''off'', ''on'', or ''toggle''. The default is ''toggle''. ''computers'' has the same form as in the ''keystroke'' action. Combine with ''keyboardBroadcast'' to fully mirror keyboard and mouse input across computers.
+
 * `switchToScreen(computerName)`
 : Jump to computer with name or alias ''computerName''.
 

@@ -110,6 +110,9 @@ Server::Server(ServerConfig &config, PrimaryClient *primaryClient, deskflow::Scr
   m_events->addHandler(EventTypes::ServerKeyboardBroadcast, m_inputFilter, [this](const auto &e) {
     handleKeyboardBroadcastEvent(e);
   });
+  m_events->addHandler(EventTypes::ServerMouseBroadcast, m_inputFilter, [this](const auto &e) {
+    handleMouseBroadcastEvent(e);
+  });
   m_events->addHandler(EventTypes::ServerLockCursorToScreen, m_inputFilter, [this](const auto &e) {
     handleLockCursorToScreenEvent(e);
   });
@@ -1390,6 +1393,38 @@ void Server::handleKeyboardBroadcastEvent(const Event &event)
   }
 }
 
+void Server::handleMouseBroadcastEvent(const Event &event)
+{
+  const auto *info = static_cast<MouseBroadcastInfo *>(event.getData());
+
+  // choose new state
+  bool newState;
+  switch (info->m_state) {
+  default:
+  case MouseBroadcastInfo::kOn:
+    newState = true;
+    break;
+
+  case MouseBroadcastInfo::kOff:
+    newState = false;
+    break;
+
+  case MouseBroadcastInfo::kToggle:
+    newState = !m_mouseBroadcasting;
+    break;
+  }
+
+  // enter new state
+  if (newState != m_mouseBroadcasting || info->m_screens != m_mouseBroadcastingScreens) {
+    m_mouseBroadcasting = newState;
+    m_mouseBroadcastingScreens = info->m_screens;
+    LOG(
+        (CLOG_DEBUG "mouse broadcasting %s: %s", m_mouseBroadcasting ? "on" : "off",
+         m_mouseBroadcastingScreens.c_str())
+    );
+  }
+}
+
 void Server::handleLockCursorToScreenEvent(const Event &event)
 {
   const auto *info = static_cast<LockCursorToScreenInfo *>(event.getData());
@@ -1582,7 +1617,19 @@ void Server::onMouseDown(ButtonID id)
   assert(m_active != nullptr);
 
   // relay
-  m_active->mouseDown(id);
+  if (!m_mouseBroadcasting) {
+    m_active->mouseDown(id);
+  } else {
+    const char *screens = m_mouseBroadcastingScreens.c_str();
+    if (IKeyState::KeyInfo::isDefault(screens)) {
+      screens = "*";
+    }
+    for (ClientList::const_iterator index = m_clients.begin(); index != m_clients.end(); ++index) {
+      if (IKeyState::KeyInfo::contains(screens, index->first)) {
+        index->second->mouseDown(id);
+      }
+    }
+  }
 }
 
 void Server::onMouseUp(ButtonID id)
@@ -1591,7 +1638,19 @@ void Server::onMouseUp(ButtonID id)
   assert(m_active != nullptr);
 
   // relay
-  m_active->mouseUp(id);
+  if (!m_mouseBroadcasting) {
+    m_active->mouseUp(id);
+  } else {
+    const char *screens = m_mouseBroadcastingScreens.c_str();
+    if (IKeyState::KeyInfo::isDefault(screens)) {
+      screens = "*";
+    }
+    for (ClientList::const_iterator index = m_clients.begin(); index != m_clients.end(); ++index) {
+      if (IKeyState::KeyInfo::contains(screens, index->first)) {
+        index->second->mouseUp(id);
+      }
+    }
+  }
 }
 
 bool Server::onMouseMovePrimary(int32_t x, int32_t y)
@@ -1615,6 +1674,11 @@ bool Server::onMouseMovePrimary(int32_t x, int32_t y)
   // save position
   m_x = x;
   m_y = y;
+
+  // mirror motion to the other screens
+  if (m_mouseBroadcasting) {
+    broadcastMouseRelativeMove(m_xDelta, m_yDelta, m_active);
+  }
 
   // get screen shape
   int32_t ax;
@@ -1724,6 +1788,9 @@ void Server::onMouseMoveSecondary(int32_t dx, int32_t dy)
   if (m_relativeMoves && isLockedToScreenServer()) {
     LOG_VERBOSE("relative move on %s by %d,%d", getName(m_active).c_str(), dx, dy);
     m_active->mouseRelativeMove(dx, dy);
+    if (m_mouseBroadcasting) {
+      broadcastMouseRelativeMove(dx, dy, m_active);
+    }
     return;
   }
 
@@ -1742,6 +1809,11 @@ void Server::onMouseMoveSecondary(int32_t dx, int32_t dy)
   // accumulate motion
   m_x += dx;
   m_y += dy;
+
+  // mirror motion to the other screens
+  if (m_mouseBroadcasting) {
+    broadcastMouseRelativeMove(dx, dy, m_active);
+  }
 
   // get screen shape
   int32_t ax;
@@ -1869,7 +1941,35 @@ void Server::onMouseWheel(int32_t xDelta, int32_t yDelta)
   assert(m_active != nullptr);
 
   // relay
-  m_active->mouseWheel(xDelta, yDelta);
+  if (!m_mouseBroadcasting) {
+    m_active->mouseWheel(xDelta, yDelta);
+  } else {
+    const char *screens = m_mouseBroadcastingScreens.c_str();
+    if (IKeyState::KeyInfo::isDefault(screens)) {
+      screens = "*";
+    }
+    for (ClientList::const_iterator index = m_clients.begin(); index != m_clients.end(); ++index) {
+      if (IKeyState::KeyInfo::contains(screens, index->first)) {
+        index->second->mouseWheel(xDelta, yDelta);
+      }
+    }
+  }
+}
+
+void Server::broadcastMouseRelativeMove(int32_t dx, int32_t dy, const BaseClientProxy *exclude) const
+{
+  if (dx == 0 && dy == 0) {
+    return;
+  }
+  const char *screens = m_mouseBroadcastingScreens.c_str();
+  if (IKeyState::KeyInfo::isDefault(screens)) {
+    screens = "*";
+  }
+  for (ClientList::const_iterator index = m_clients.begin(); index != m_clients.end(); ++index) {
+    if (index->second != exclude && IKeyState::KeyInfo::contains(screens, index->first)) {
+      index->second->mouseRelativeMove(dx, dy);
+    }
+  }
 }
 
 bool Server::addClient(BaseClientProxy *client)

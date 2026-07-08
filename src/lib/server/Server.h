@@ -130,6 +130,32 @@ public:
     std::string m_screens;
   };
 
+  //! Mouse broadcast data
+  class MouseBroadcastInfo : public EventData
+  {
+  public:
+    enum State
+    {
+      kOff,
+      kOn,
+      kToggle
+    };
+
+    explicit MouseBroadcastInfo(State state = kToggle) : m_state(state)
+    {
+      // do nothing
+    }
+    MouseBroadcastInfo(State state, const std::string &screens) : m_state(state), m_screens(screens)
+    {
+      // do nothing
+    }
+    ~MouseBroadcastInfo() override = default; // do nothing
+
+  public:
+    State m_state;
+    std::string m_screens;
+  };
+
   /*!
   Start the server with the configuration \p config and the primary
   client (local screen) \p primaryClient.  The client retains
@@ -322,6 +348,7 @@ private:
   void handleSwitchInDirectionEvent(const Event &event);
   void handleToggleScreenEvent(const Event &);
   void handleKeyboardBroadcastEvent(const Event &event);
+  void handleMouseBroadcastEvent(const Event &event);
   void handleLockCursorToScreenEvent(const Event &event);
 
   // event processing
@@ -335,6 +362,9 @@ private:
   bool onMouseMovePrimary(int32_t x, int32_t y);
   void onMouseMoveSecondary(int32_t dx, int32_t dy);
   void onMouseWheel(int32_t xDelta, int32_t yDelta);
+
+  // send a relative mouse move to all mouse broadcast targets except \p exclude
+  void broadcastMouseRelativeMove(int32_t dx, int32_t dy, const BaseClientProxy *exclude) const;
 
   // add client to list and attach event handlers for client
   bool addClient(BaseClientProxy *);
@@ -406,6 +436,9 @@ private:
   // Name of screen broadcasting the keyboard events
   std::string m_keyboardBroadcastingScreens;
 
+  // Name of screens receiving broadcast mouse events
+  std::string m_mouseBroadcastingScreens;
+
   // all clients (including the primary client) indexed by name
   using ClientList = std::map<std::string, BaseClientProxy *>;
   using ClientSet = std::set<BaseClientProxy *>;
@@ -461,6 +494,10 @@ private:
   // flag whether or not we have broadcasting enabled and the screens to
   // which we should send broadcasted keys.
   bool m_keyboardBroadcasting = false;
+
+  // flag whether or not mouse broadcasting is enabled and the screens to
+  // which we should send broadcasted mouse events.
+  bool m_mouseBroadcasting = false;
 
   // screen locking (former scroll lock)
   bool m_lockedToScreen = false;
