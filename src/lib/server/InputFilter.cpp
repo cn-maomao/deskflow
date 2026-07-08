@@ -420,9 +420,7 @@ void InputFilter::KeyboardBroadcastAction::perform(const Event &event)
   );
 }
 
-InputFilter::MouseBroadcastAction::MouseBroadcastAction(IEventQueue *events, Mode mode)
-    : m_mode(mode),
-      m_events(events)
+InputFilter::MouseBroadcastAction::MouseBroadcastAction(IEventQueue *events, Mode mode) : m_mode(mode), m_events(events)
 {
   // do nothing
 }

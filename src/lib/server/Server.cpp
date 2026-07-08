@@ -1418,9 +1418,7 @@ void Server::handleMouseBroadcastEvent(const Event &event)
   if (newState != m_mouseBroadcasting || info->m_screens != m_mouseBroadcastingScreens) {
     m_mouseBroadcasting = newState;
     m_mouseBroadcastingScreens = info->m_screens;
-    LOG(
-        (CLOG_DEBUG "mouse broadcasting %s: %s", m_mouseBroadcasting ? "on" : "off",
-         m_mouseBroadcastingScreens.c_str())
+    LOG((CLOG_DEBUG "mouse broadcasting %s: %s", m_mouseBroadcasting ? "on" : "off", m_mouseBroadcastingScreens.c_str())
     );
   }
 }
