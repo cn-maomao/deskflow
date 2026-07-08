@@ -24,4 +24,12 @@ void ServerTests::KeyboardBroadcastInfo_alloc_stateAndSceens()
   delete info;
 }
 
+void ServerTests::MouseBroadcastInfo_alloc_stateAndScreens()
+{
+  auto info = new Server::MouseBroadcastInfo(Server::MouseBroadcastInfo::State::kOn, "test");
+  QCOMPARE(info->m_state, Server::MouseBroadcastInfo::State::kOn);
+  QCOMPARE(info->m_screens, "test");
+  delete info;
+}
+
 QTEST_MAIN(ServerTests)
