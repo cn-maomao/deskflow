@@ -473,6 +473,15 @@ static LRESULT CALLBACK keyboardLLHook(int code, WPARAM wParam, LPARAM lParam)
 
 static bool mouseHookHandler(WPARAM wParam, int32_t x, int32_t y, int32_t data)
 {
+  // if we're expecting fake input (server is injecting broadcast input on
+  // its own primary screen) then let the event through to the local app
+  // and do not forward it to the server, mirroring the keyboard hook.
+  // this prevents an echo loop when mouse broadcasting is echoed to the
+  // primary screen.
+  if (g_fakeServerInput) {
+    return false;
+  }
+
   switch (wParam) {
   case WM_LBUTTONDOWN:
   case WM_MBUTTONDOWN:
