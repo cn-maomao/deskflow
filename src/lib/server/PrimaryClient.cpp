@@ -139,14 +139,14 @@ void PrimaryClient::setClipboardDirty(ClipboardID id, bool dirty)
   m_clipboardDirty[id] = dirty;
 }
 
-void PrimaryClient::keyDown(KeyID key, KeyModifierMask mask, KeyButton button, const std::string &)
+void PrimaryClient::keyDown(KeyID key, KeyModifierMask mask, KeyButton button, const std::string &lang)
 {
+  // only inject when the caller has bracketed the call with
+  // fakeInputBegin()/fakeInputEnd() so the local keyboard hook marks
+  // the synthesized event as fake input and does not re-broadcast it
+  // (which would otherwise cause an echo loop on the primary screen).
   if (m_fakeInputCount > 0) {
-    // XXX -- don't forward keystrokes to primary screen for now
-    (void)key;
-    (void)mask;
-    (void)button;
-    //        m_screen->keyDown(key, mask, button);
+    m_screen->keyDown(key, mask, button, lang);
   }
 }
 
@@ -158,22 +158,22 @@ void PrimaryClient::keyRepeat(KeyID, KeyModifierMask, int32_t, KeyButton, const 
 void PrimaryClient::keyUp(KeyID key, KeyModifierMask mask, KeyButton button)
 {
   if (m_fakeInputCount > 0) {
-    // XXX -- don't forward keystrokes to primary screen for now
-    (void)key;
-    (void)mask;
-    (void)button;
-    //        m_screen->keyUp(key, mask, button);
+    m_screen->keyUp(key, mask, button);
   }
 }
 
-void PrimaryClient::mouseDown(ButtonID)
+void PrimaryClient::mouseDown(ButtonID id)
 {
-  // ignore
+  if (m_fakeInputCount > 0) {
+    m_screen->mouseDown(id);
+  }
 }
 
-void PrimaryClient::mouseUp(ButtonID)
+void PrimaryClient::mouseUp(ButtonID id)
 {
-  // ignore
+  if (m_fakeInputCount > 0) {
+    m_screen->mouseUp(id);
+  }
 }
 
 void PrimaryClient::mouseMove(int32_t x, int32_t y)
@@ -181,14 +181,18 @@ void PrimaryClient::mouseMove(int32_t x, int32_t y)
   m_screen->warpCursor(x, y);
 }
 
-void PrimaryClient::mouseRelativeMove(int32_t, int32_t)
+void PrimaryClient::mouseRelativeMove(int32_t dx, int32_t dy)
 {
-  // ignore
+  if (m_fakeInputCount > 0) {
+    m_screen->mouseRelativeMove(dx, dy);
+  }
 }
 
-void PrimaryClient::mouseWheel(int32_t, int32_t)
+void PrimaryClient::mouseWheel(int32_t xDelta, int32_t yDelta)
 {
-  // ignore
+  if (m_fakeInputCount > 0) {
+    m_screen->mouseWheel(xDelta, yDelta);
+  }
 }
 
 void PrimaryClient::screensaver(bool)

@@ -366,6 +366,13 @@ private:
   // send a relative mouse move to all mouse broadcast targets except \p exclude
   void broadcastMouseRelativeMove(int32_t dx, int32_t dy, const BaseClientProxy *exclude) const;
 
+  // true when broadcast input should also be injected on the primary (server)
+  // screen: the cursor is currently on a client (so the primary's OS did not
+  // receive the input locally via passthrough) and the primary is a broadcast
+  // target for \p screens. when the cursor is on the primary screen this
+  // returns false to avoid duplicating input that already reached the local OS.
+  bool shouldEchoToPrimary(const char *screens) const;
+
   // add client to list and attach event handlers for client
   bool addClient(BaseClientProxy *);
 

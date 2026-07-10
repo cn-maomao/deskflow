@@ -1418,9 +1418,7 @@ void Server::handleMouseBroadcastEvent(const Event &event)
   if (newState != m_mouseBroadcasting || info->m_screens != m_mouseBroadcastingScreens) {
     m_mouseBroadcasting = newState;
     m_mouseBroadcastingScreens = info->m_screens;
-    LOG(
-        (CLOG_DEBUG "mouse broadcasting %s: %s", m_mouseBroadcasting ? "on" : "off",
-         m_mouseBroadcastingScreens.c_str())
+    LOG((CLOG_DEBUG "mouse broadcasting %s: %s", m_mouseBroadcasting ? "on" : "off", m_mouseBroadcastingScreens.c_str())
     );
   }
 }
@@ -1562,11 +1560,16 @@ void Server::onKeyDown(KeyID id, KeyModifierMask mask, KeyButton button, const s
   if (!m_keyboardBroadcasting && IKeyState::KeyInfo::isDefault(screens)) {
     m_active->keyDown(id, mask, button, lang);
   } else {
-    if (!screens && m_keyboardBroadcasting) {
+    if (IKeyState::KeyInfo::isDefault(screens) && m_keyboardBroadcasting) {
       screens = m_keyboardBroadcastingScreens.c_str();
       if (IKeyState::KeyInfo::isDefault(screens)) {
         screens = "*";
       }
+    }
+    if (shouldEchoToPrimary(screens)) {
+      m_primaryClient->fakeInputBegin();
+      m_primaryClient->keyDown(id, mask, button, lang);
+      m_primaryClient->fakeInputEnd();
     }
     for (ClientList::const_iterator index = m_clients.begin(); index != m_clients.end(); ++index) {
       if (IKeyState::KeyInfo::contains(screens, index->first)) {
@@ -1585,11 +1588,16 @@ void Server::onKeyUp(KeyID id, KeyModifierMask mask, KeyButton button, const cha
   if (!m_keyboardBroadcasting && IKeyState::KeyInfo::isDefault(screens)) {
     m_active->keyUp(id, mask, button);
   } else {
-    if (!screens && m_keyboardBroadcasting) {
+    if (IKeyState::KeyInfo::isDefault(screens) && m_keyboardBroadcasting) {
       screens = m_keyboardBroadcastingScreens.c_str();
       if (IKeyState::KeyInfo::isDefault(screens)) {
         screens = "*";
       }
+    }
+    if (shouldEchoToPrimary(screens)) {
+      m_primaryClient->fakeInputBegin();
+      m_primaryClient->keyUp(id, mask, button);
+      m_primaryClient->fakeInputEnd();
     }
     for (ClientList::const_iterator index = m_clients.begin(); index != m_clients.end(); ++index) {
       if (IKeyState::KeyInfo::contains(screens, index->first)) {
@@ -1624,6 +1632,11 @@ void Server::onMouseDown(ButtonID id)
     if (IKeyState::KeyInfo::isDefault(screens)) {
       screens = "*";
     }
+    if (shouldEchoToPrimary(screens)) {
+      m_primaryClient->fakeInputBegin();
+      m_primaryClient->mouseDown(id);
+      m_primaryClient->fakeInputEnd();
+    }
     for (ClientList::const_iterator index = m_clients.begin(); index != m_clients.end(); ++index) {
       if (IKeyState::KeyInfo::contains(screens, index->first)) {
         index->second->mouseDown(id);
@@ -1644,6 +1657,11 @@ void Server::onMouseUp(ButtonID id)
     const char *screens = m_mouseBroadcastingScreens.c_str();
     if (IKeyState::KeyInfo::isDefault(screens)) {
       screens = "*";
+    }
+    if (shouldEchoToPrimary(screens)) {
+      m_primaryClient->fakeInputBegin();
+      m_primaryClient->mouseUp(id);
+      m_primaryClient->fakeInputEnd();
     }
     for (ClientList::const_iterator index = m_clients.begin(); index != m_clients.end(); ++index) {
       if (IKeyState::KeyInfo::contains(screens, index->first)) {
@@ -1948,6 +1966,11 @@ void Server::onMouseWheel(int32_t xDelta, int32_t yDelta)
     if (IKeyState::KeyInfo::isDefault(screens)) {
       screens = "*";
     }
+    if (shouldEchoToPrimary(screens)) {
+      m_primaryClient->fakeInputBegin();
+      m_primaryClient->mouseWheel(xDelta, yDelta);
+      m_primaryClient->fakeInputEnd();
+    }
     for (ClientList::const_iterator index = m_clients.begin(); index != m_clients.end(); ++index) {
       if (IKeyState::KeyInfo::contains(screens, index->first)) {
         index->second->mouseWheel(xDelta, yDelta);
@@ -1965,11 +1988,28 @@ void Server::broadcastMouseRelativeMove(int32_t dx, int32_t dy, const BaseClient
   if (IKeyState::KeyInfo::isDefault(screens)) {
     screens = "*";
   }
+  // echo to the primary (server) screen when the cursor is on a client
+  if (shouldEchoToPrimary(screens)) {
+    m_primaryClient->fakeInputBegin();
+    m_primaryClient->mouseRelativeMove(dx, dy);
+    m_primaryClient->fakeInputEnd();
+  }
   for (ClientList::const_iterator index = m_clients.begin(); index != m_clients.end(); ++index) {
     if (index->second != exclude && IKeyState::KeyInfo::contains(screens, index->first)) {
       index->second->mouseRelativeMove(dx, dy);
     }
   }
+}
+
+bool Server::shouldEchoToPrimary(const char *screens) const
+{
+  // when the cursor is on the primary screen the input already reached the
+  // local OS via the keyboard/mouse hook passthrough, so injecting it again
+  // would duplicate it.
+  if (m_active == m_primaryClient) {
+    return false;
+  }
+  return IKeyState::KeyInfo::contains(screens, m_primaryClient->getName());
 }
 
 bool Server::addClient(BaseClientProxy *client)
