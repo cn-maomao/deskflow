@@ -1560,7 +1560,7 @@ void Server::onKeyDown(KeyID id, KeyModifierMask mask, KeyButton button, const s
   if (!m_keyboardBroadcasting && IKeyState::KeyInfo::isDefault(screens)) {
     m_active->keyDown(id, mask, button, lang);
   } else {
-    if (!screens && m_keyboardBroadcasting) {
+    if (IKeyState::KeyInfo::isDefault(screens) && m_keyboardBroadcasting) {
       screens = m_keyboardBroadcastingScreens.c_str();
       if (IKeyState::KeyInfo::isDefault(screens)) {
         screens = "*";
@@ -1588,7 +1588,7 @@ void Server::onKeyUp(KeyID id, KeyModifierMask mask, KeyButton button, const cha
   if (!m_keyboardBroadcasting && IKeyState::KeyInfo::isDefault(screens)) {
     m_active->keyUp(id, mask, button);
   } else {
-    if (!screens && m_keyboardBroadcasting) {
+    if (IKeyState::KeyInfo::isDefault(screens) && m_keyboardBroadcasting) {
       screens = m_keyboardBroadcastingScreens.c_str();
       if (IKeyState::KeyInfo::isDefault(screens)) {
         screens = "*";
